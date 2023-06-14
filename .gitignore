@@ -6,3 +6,157 @@
 
 # Compiled Pre-Linked Libraries
 *.plx
+create table tb_a (
+id number (12),
+nombre_p varchar (50), 
+tipo varchar (35),
+costo number (10));
+create table tb_b (descripcion varchar (100));
+
+drop TABLE tb_a;
+drop TABLE tb_b;
+
+insert into tb_a values (001, 'donitas', 'pan', 20);
+insert into tb_a values (002, 'rebanada', 'pan', 10);
+insert into tb_a values (003, 'mantecadas', 'pan', 25);
+insert into tb_a values (004, 'nito', 'pan', 15);
+insert into tb_a values (005, 'buñuelos', 'pan', 20);
+insert into tb_a values (021, 'doritos', 'botana', 15);
+insert into tb_a values (022, 'paketaxo', 'botana', 56);
+insert into tb_a values (023, 'Sabritas adobadas', 'botana', 35);
+insert into tb_a values (024, 'crujitos', 'botana', 15);
+insert into tb_a values (025, 'sabritones', 'botana', 50);
+insert into tb_a values (051, 'pulparindo', 'dulce', 8);
+insert into tb_a values (052, 'picafresa', 'dulce', 2);
+insert into tb_a values (053, 'mazapan', 'dulce', 8);
+insert into tb_a values (054, 'panditas', 'dulce', 18);
+insert into tb_a values (055, 'dragoncito', 'dulce', 3);
+
+select*from tb_a;
+select*from tb_b;
+/*Paso 2*/
+CREATE OR REPLACE TRIGGER tb_a_trigger
+BEFORE DELETE OR UPDATE OR INSERT ON tb_a
+FOR EACH ROW
+BEGIN
+  /* DELETE*/
+  IF deleting THEN
+    DELETE FROM tb_b WHERE descripcion = :OLD.nombre_p;
+    INSERT INTO tb_b (descripcion) VALUES ('El pan fue ELIMINADO: ' || :OLD.nombre_p);
+  END IF;
+
+ /*UPDATE*/
+  IF updating THEN
+    UPDATE tb_b SET descripcion = :NEW.nombre_p WHERE descripcion = :OLD.nombre_p;
+    INSERT INTO tb_b (descripcion) VALUES ('La botana fue ACTUALIZADO a: ' || :NEW.nombre_p);
+  END IF;
+
+ /*INSERT*/
+  IF inserting THEN
+    INSERT INTO tb_b (descripcion) VALUES (:NEW.nombre_p);
+INSERT INTO tb_a (id, nombre_p, tipo, costo) VALUES (:NEW.id, 'nuevo producto', :NEW.tipo, :NEW.costo);
+  END IF;
+END;
+/
+drop TRIGGER tb_a_trigger;
+    
+DELETE FROM tb_a WHERE id = 001;
+DELETE FROM tb_a WHERE tipo = 'pan';
+
+UPDATE tb_a SET nombre_p = 'doritoss' WHERE id = 21;
+
+INSERT INTO tb_a SELECT 9, 'milky', tipo, costo FROM tb_a WHERE id = 1;
+
+/*****/
+CREATE OR REPLACE TRIGGER t_b_a_trigger
+AFTER DELETE OR UPDATE OR INSERT ON tb_a
+FOR EACH ROW
+BEGIN
+  /* DELETE*/
+  IF deleting THEN
+    DELETE FROM tb_b WHERE descripcion = :OLD.nombre_p;
+    INSERT INTO tb_b (descripcion) VALUES ('El pan fue ELIMINADO: ' || :OLD.nombre_p);
+  END IF;
+
+ /*UPDATE*/
+  IF updating THEN
+    UPDATE tb_b SET descripcion = :NEW.nombre_p WHERE descripcion = :OLD.nombre_p;
+    INSERT INTO tb_b (descripcion) VALUES ('La botana fue ACTUALIZADO a: ' || :NEW.nombre_p);
+  END IF;
+
+ /*INSERT*/
+  IF inserting THEN
+    INSERT INTO tb_b (descripcion) VALUES (:NEW.nombre_p);
+INSERT INTO tb_a (id, nombre_p, tipo, costo) VALUES (:NEW.id, 'nuevo producto', :NEW.tipo, :NEW.costo);
+  END IF;
+END;
+/
+    drop TABLE t_b_a_trigger;
+DELETE FROM tb_a WHERE id = 001;
+DELETE FROM tb_a WHERE tipo = 'pan';
+
+UPDATE tb_a SET nombre_p = 'Paketaxo azul ' WHERE id = 022;
+
+INSERT INTO tb_a SELECT 9, 'milky', tipo, costo FROM tb_a WHERE id = 1;
+
+
+/**paso 3*/
+
+/*cree el trigger y se va a disparar despues de cada insercion*/
+CREATE OR REPLACE TRIGGER nombre_trigger
+AFTER INSERT ON tb_a
+/* se ejecutará una vez por cada fila insertada*/
+FOR EACH ROW
+DECLARE
+/*declare mi variable letra_inicial con tipo char 1 donde se va a alamacenar*/
+  letra_inicial CHAR(1);
+BEGIN
+/*asigne mi variable de la primera letra del producto*/
+  letra_inicial := SUBSTR(:NEW.nombre_p, 1, 1);
+  /*puse el if para que revice si es igual a d y si es igual a d poner el siguiente mensaje se agregó un producto y su nombre empieza con D
+  agregado la fecha y la hora*/
+  IF letra_inicial = 'd' THEN
+    INSERT INTO tb_b (descripcion)
+    VALUES ('Se agregó un producto y su nombre empieza con D.  ' || TO_CHAR(SYSDATE, 'YYYY-MM-DD HH24:MI:SS'));
+  END IF;
+END;
+/
+drop TRIGGER  nombre_trigger;
+INSERT INTO tb_a VALUES (056, 'nito', 'pan', 15);
+INSERT INTO tb_a VALUES (057, 'buñuelos', 'pan', 20);
+INSERT INTO tb_a VALUES (058, 'dragoncito', 'dulce', 3);
+
+/**paso 4**/
+CREATE OR REPLACE TRIGGER tr_eliminar_producto
+before DELETE ON tb_a
+FOR EACH ROW
+BEGIN
+  /* me va ayudar si el costo del producto a eliminar es igual o menor a 12 pesos*/
+  IF :OLD.costo <= 12 THEN
+   /*Insertar registro en la tabla B con la descripción Se eliminó un producto humilde que quería comprar con lo que tenía de mi pasaje :,c' */
+    INSERT INTO tb_b (descripcion)
+    VALUES ('Se eliminó un producto humilde que quería comprar con lo que tenía de mi pasaje :,c');
+  END IF;
+END;
+/
+DELETE FROM tb_a WHERE id = 001;
+
+
+
+
+
+CREATE OR REPLACE TRIGGER tri_eliminar_producto_humilde
+AFTER DELETE ON tb_a
+FOR EACH ROW
+DECLARE
+/*declare mi variable v_costo usando  tb_a.costo%TYPE*/
+  v_costo tb_a.costo%TYPE;
+BEGIN /**le asigne el valor del costo del producto eliminado a la variable v_costo utilizando :old.costo. :old representa la fila eliminada.**/
+  v_costo := :old.costo;
+  IF v_costo <= 12 THEN /**el if verifica si es mayor o igual 12 si es asi va a salir el siguiente mensaje Se eliminó un producto humilde que quería comprar con lo que tenía de mi pasaje :,c */
+    INSERT INTO tb_b VALUES ('Se eliminó un producto humilde que quería comprar con lo que tenía de mi pasaje :,c');
+  END IF;
+END;
+/
+insert into tb_a values (059, 'panditas', 'dulce', 18);
+DELETE FROM tb_a WHERE id = 060;
